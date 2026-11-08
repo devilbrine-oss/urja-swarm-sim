@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Urja-Swarm: Interactive 3D Hardware Workbench & Architecture Guide</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js and OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap');
+
+    body {
+      background-color: #040711;
+      font-family: 'Inter', sans-serif;
+      color: #e2e8f0;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
+
+    /* Custom Cyber-Engineering Glows */
+    .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.25); }
+    .glow-emerald { box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
+    .glow-rose { box-shadow: 0 0 25px rgba(244, 63, 94, 0.45); }
+    .glow-amber { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+
+    /* 3D Callout Pin Styling */
+    .pin-marker {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), z-index 0s;
+      z-index: 15;
+    }
+    .pin-marker:hover {
+      transform: translate(-50%, -108%) scale(1.08);
+      z-index: 30;
+    }
+    .pin-marker.active-pin {
+      transform: translate(-50%, -110%) scale(1.12);
+      z-index: 35;
+    }
+
+    /* Custom Range Slider */
+    input[type=range] {
+      accent-color: #06b6d4;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #070b14; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+  </style>
+</head>
+<body class="relative w-screen h-screen flex flex-col overflow-hidden bg-[#040711]">
+
+  <!-- ===================================================================== -->
+  <!-- TOP HEADER: TITLE, 6-STEP GUIDED WALKTHROUGH & LIVE EQUATION BAR     -->
+  <!-- ===================================================================== -->
+  <header class="relative z-30 bg-[#070c18]/95 backdrop-blur-md border-b border-slate-800/90 px-4 py-2 flex flex-col gap-2">
+    
+    <!-- Top Row: Project Title + 6-Step Guided Build & Demo Tour -->
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-cyan-950/90 border border-cyan-500/50 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+          <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm md:text-base font-extrabold tracking-wide text-white font-rajdhani uppercase">
+              PROJECT URJA-SWARM • 3D EXPLANATORY WORKBENCH
+            </h1>
+            <span class="px-2 py-0.5 text-[9px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 rounded">
+              FULL BUILD BLUEPRINT
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400 hidden sm:block">
+            Click any 3D hardware part or follow the 6-Step Guided Tour below to see how we generate 50Hz AC &amp; govern it with Agentic AI
+          </p>
+        </div>
+      </div>
+
+      <!-- 6-Step Guided Tour Bar -->
+      <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 overflow-x-auto max-w-full">
+        <span class="text-[9px] font-mono uppercase tracking-wider text-slate-400 px-2 font-semibold flex items-center gap-1 shrink-0">
+          <i data-lucide="compass" class="w-3 h-3 text-cyan-400"></i> Guided Tour:
+        </span>
+        <button onclick="selectTourStep(1)" id="tour-btn-1" class="tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_#06b6d4]">
+          1. Shaft Coupling
+        </button>
+        <button onclick="selectTourStep(2)" id="tour-btn-2" class="tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-slate-800/80 text-slate-300 hover:bg-slate-700">
+          2. 50Hz AC Gen
+        </button>
+        <button onclick="selectTourStep(3)" id="tour-btn-3" class="tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-slate-800/80 text-slate-300 hover:bg-slate-700">
+          3. ZMPT101B Sense
+        </button>
+        <button onclick="selectTourStep(4)" id="tour-btn-4" class="tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-slate-800/80 text-rose-300 hover:bg-rose-950/60 border border-rose-500/30">
+          4. Runaway Crisis!
+        </button>
+        <button onclick="selectTourStep(5)" id="tour-btn-5" class="tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-slate-800/80 text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/30">
+          5. PWM Ballast Fix
+        </button>
+        <button onclick="selectTourStep(6)" id="tour-btn-6" class="tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-slate-800/80 text-amber-300 hover:bg-amber-950/60 border border-amber-500/30">
+          6. AI Drought Bid
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Live Micro-Hydro Physics & Power Balance Equation Bar -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 items-center bg-[#040812] border border-slate-800/90 rounded-lg px-3 py-1.5 text-xs">
+      
+      <!-- Power Conservation Equation -->
+      <div class="lg:col-span-7 flex flex-wrap items-center gap-1.5 sm:gap-2 font-mono text-[11px]">
+        <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-sans font-bold">Power Balance:</span>
+        
+        <div class="flex items-center gap-1 bg-cyan-950/50 border border-cyan-800/60 px-2 py-0.5 rounded">
+          <span class="text-slate-400 text-[9px]">P_turbine:</span>
+          <span id="eq-pturbine" class="text-cyan-300 font-bold">360W</span>
+        </div>
+
+        <span class="text-slate-500 font-bold">=</span>
+
+        <div class="flex items-center gap-1 bg-indigo-950/50 border border-indigo-800/60 px-2 py-0.5 rounded">
+          <span class="text-slate-400 text-[9px]">P_village:</span>
+          <span id="eq-pvillage" class="text-indigo-300 font-bold">320W</span>
+        </div>
+
+        <span class="text-slate-500 font-bold">+</span>
+
+        <div class="flex items-center gap-1 bg-amber-950/50 border border-amber-800/60 px-2 py-0.5 rounded">
+          <span class="text-slate-400 text-[9px]">P_ballast_dump:</span>
+          <span id="eq-pballast" class="text-amber-300 font-bold">40W</span>
+        </div>
+
+        <span class="text-slate-500 font-bold">→</span>
+
+        <div id="eq-surplus-box" class="flex items-center gap-1 bg-emerald-950/50 border border-emerald-700/60 px-2 py-0.5 rounded">
+          <span class="text-slate-400 text-[9px]">Net Surplus:</span>
+          <span id="eq-psurplus" class="text-emerald-300 font-bold">0W (Balanced)</span>
+        </div>
+      </div>
+
+      <!-- Synchronous Frequency Equation & Governor Master Switch -->
+      <div class="lg:col-span-5 flex flex-wrap items-center justify-between lg:justify-end gap-3 border-t lg:border-t-0 pt-1 lg:pt-0 border-slate-800">
+        <div class="flex items-center gap-2 font-mono text-[11px]">
+          <span class="text-slate-400 text-[10px]">f = (4_Poles × <strong id="eq-rpm" class="text-cyan-300">1500</strong> RPM)/120 =</span>
+          <span id="eq-hz-badge" class="px-2 py-0.5 rounded font-extrabold text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+            50.00 Hz
+          </span>
+        </div>
+
+        <!-- Master AI Governor ON/OFF Switch -->
+        <div class="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-slate-700">
+          <span class="text-[9.5px] font-bold uppercase text-slate-300">Governor:</span>
+          <button id="btn-gov-on" onclick="setGovernorActive(true)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-slate-950 shadow-[0_0_10px_#10b981] transition">
+            AI ON (Locked)
+          </button>
+          <button id="btn-gov-off" onclick="setGovernorActive(false)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 hover:text-rose-300 transition">
+            OFF (Runaway)
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN WORKSPACE: 3D VIEWPORT + INSPECTOR OVERLAYS + RIGHT SIDEBAR     -->
+  <!-- ===================================================================== -->
+  <div class="relative flex-1 flex overflow-hidden">
+
+    <!-- CENTER/LEFT: 3D HARDWARE WORKBENCH VIEWPORT -->
+    <div class="relative flex-1 h-full overflow-hidden">
+      <!-- Three.js Canvas Container -->
+      <div id="webgl-container" class="w-full h-full"></div>
+
+      <!-- 2D Projected HTML Callout Pins Container -->
+      <div id="pins-container" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+      <!-- Guided Tour Step Explanation Banner (Top Left of 3D Viewport) -->
+      <div id="tour-banner" class="absolute top-3 left-3 right-3 md:right-auto md:max-w-xl z-20 bg-[#080f20]/95 backdrop-blur-md border-l-4 border-cyan-400 border-t border-r border-b border-slate-700/80 rounded-r-xl p-3.5 shadow-2xl transition-all">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span id="tour-step-badge" class="px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-mono font-extrabold text-[10px] uppercase">
+              STEP 1 OF 6
+            </span>
+            <h2 id="tour-step-title" class="text-xs sm:text-sm font-bold text-white">
+              Mechanical Shaft Coupling (Water Turbine → AC Alternator)
+            </h2>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button onclick="prevTourStep()" class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Previous Step">
+              <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="nextTourStep()" class="px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center gap-1" title="Next Step">
+              Next <i data-lucide="chevron-right" class="w-3 h-3"></i>
+            </button>
+          </div>
+        </div>
+        <p id="tour-step-desc" class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+          We cannot bring a rushing river indoors. Instead, a <strong>12V RS-775 High-Torque DC Motor</strong> acts as our "Water Turbine". We lock its 5mm shaft directly to a <strong>NEMA 17 Stepper Motor</strong> using a <strong>5mm-to-5mm Brass Coupler</strong>. When the DC motor spins at 1500 RPM, the stepper motor is forced to spin with it.
+        </p>
+        <div id="tour-step-action" class="mt-2 pt-1.5 border-t border-slate-800/90 flex items-center justify-between text-[10px] font-mono text-cyan-300">
+          <span>💡 Look at the spinning Gold Brass Coupler in the center of the 3D table!</span>
+          <button onclick="resetCameraView()" class="text-slate-400 hover:text-white underline flex items-center gap-1">
+            <i data-lucide="maximize-2" class="w-3 h-3"></i> Reset Camera
+          </button>
+        </div>
+      </div>
+
+      <!-- Particle Legend (Top Right of 3D Viewport) -->
+      <div class="hidden xl:flex flex-col gap-1 absolute top-3 right-3 z-20 bg-[#070c18]/90 backdrop-blur-md border border-slate-800 rounded-lg p-2.5 text-[10px]">
+        <div class="font-bold text-slate-300 uppercase tracking-wider text-[9px] mb-0.5 flex items-center gap-1">
+          <i data-lucide="sparkles" class="w-3 h-3 text-cyan-400"></i> Live Energy &amp; Signal Particles
+        </div>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8]"></span><span class="text-slate-300">12V DC Drive Power (Battery → 775 Motor)</span></div>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"></span><span class="text-slate-300">12V 50Hz AC Wave (Stepper → Sensor &amp; Village)</span></div>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]"></span><span class="text-slate-300">1.65V Zero-Cross Signal (ZMPT101B → GPIO 34)</span></div>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_6px_#fbbf24]"></span><span class="text-slate-300">5kHz PWM Dump Pulse (GPIO 18 → Ballast Bulb)</span></div>
+      </div>
+
+      <!-- Component Deep-Dive X-Ray Card (Bottom Left of 3D Viewport) -->
+      <div id="component-card" class="absolute bottom-14 left-3 right-3 md:right-auto md:w-[500px] z-20 bg-[#070c18]/95 backdrop-blur-md border border-cyan-500/50 rounded-xl p-3.5 shadow-2xl glow-cyan transition-all">
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="card-badge" class="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded">
+                PART #3 • MECHANICAL
+              </span>
+              <span id="card-price" class="text-[10px] font-mono font-bold text-emerald-400">
+                ~NPR 150 (New Road / Himalayan Solution)
+              </span>
+            </div>
+            <h3 id="card-title" class="text-sm font-extrabold text-white mt-0.5">
+              5mm-to-5mm Brass Shaft Coupler
+            </h3>
+          </div>
+          <button onclick="toggleCardMinimize()" class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white" title="Minimize/Expand Details">
+            <i id="card-min-icon" data-lucide="chevron-down" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div id="card-body" class="space-y-2 mt-2 text-[11px]">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="bg-slate-900/90 p-2 rounded border border-slate-800">
+              <span class="text-[9px] font-mono uppercase text-amber-400 font-bold block">🏔️ Real Nepal Micro-Hydro Role:</span>
+              <p id="card-real-role" class="text-slate-300 mt-0.5 leading-snug">
+                Main steel drive shaft connecting the Pelton/Crossflow water turbine runner to the synchronous AC alternator rotor.
+              </p>
+            </div>
+            <div class="bg-slate-900/90 p-2 rounded border border-slate-800">
+              <span class="text-[9px] font-mono uppercase text-cyan-400 font-bold block">🔬 Our Exhibition Bench Role:</span>
+              <p id="card-bench-role" class="text-slate-300 mt-0.5 leading-snug">
+                Locks the 5mm shaft of our RS-775 DC motor directly to the 5mm shaft of our NEMA 17 stepper motor so they spin at the exact same RPM.
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-2 rounded border border-slate-800/90 font-mono text-[10px]">
+            <span class="text-emerald-400 font-bold uppercase text-[9px] block">⚡ Exact Wiring &amp; Assembly Spec:</span>
+            <p id="card-wiring" class="text-slate-300 mt-0.5">
+              Slide halfway onto 775 DC Motor 5mm shaft &amp; halfway onto NEMA 17 5mm shaft. Tighten the 4 M3 hex grub screws firmly. Ensure straight coaxial alignment to prevent vibration.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Quick-Select Hardware X-Ray Bar -->
+      <div class="absolute bottom-2 left-3 right-3 z-20 flex items-center justify-between gap-1.5 bg-[#070c18]/90 backdrop-blur-md border border-slate-800 px-2.5 py-1.5 rounded-lg overflow-x-auto">
+        <span class="text-[9px] font-mono uppercase text-slate-400 font-bold shrink-0 flex items-center gap-1">
+          <i data-lucide="layers" class="w-3 h-3 text-cyan-400"></i> Inspect Part:
+        </span>
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="selectComponent('psu')" id="part-btn-psu" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ① 12V Battery &amp; PWM Knob
+          </button>
+          <button onclick="selectComponent('dc_motor')" id="part-btn-dc_motor" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ② RS-775 DC Motor
+          </button>
+          <button onclick="selectComponent('coupler')" id="part-btn-coupler" class="part-btn px-2 py-1 rounded text-[10px] font-bold bg-cyan-500 text-slate-950 transition">
+            ③ 5mm Brass Coupler
+          </button>
+          <button onclick="selectComponent('stepper')" id="part-btn-stepper" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ④ NEMA 17 AC Alternator
+          </button>
+          <button onclick="selectComponent('zmpt')" id="part-btn-zmpt" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ⑤ ZMPT101B AC Sensor
+          </button>
+          <button onclick="selectComponent('esp32')" id="part-btn-esp32" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ⑥ ESP32 Edge Brain
+          </button>
+          <button onclick="selectComponent('ballast')" id="part-btn-ballast" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ⑦ MOSFET &amp; Ballast Bulb
+          </button>
+          <button onclick="selectComponent('village')" id="part-btn-village" class="part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition">
+            ⑧ Village Load Nodes
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- RIGHT SIDEBAR: DUAL OSCILLOSCOPE, CONTROLS & AGENTIC AI LOG           -->
+    <!-- ===================================================================== -->
+    <aside class="w-80 sm:w-96 bg-[#070c18]/95 border-l border-slate-800/90 z-20 flex flex-col justify-between overflow-y-auto p-3 gap-2.5 shrink-0">
+
+      <!-- 1. Dual-Trace Oscilloscope (12V Raw AC + 1.65V ZMPT101B ADC Wave) -->
+      <div class="bg-[#040812] border border-slate-800 rounded-xl p-2.5 shadow-lg">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="activity" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span class="text-[11px] font-bold text-white uppercase tracking-wider font-rajdhani">
+              Live AC &amp; Zero-Cross Oscilloscope
+            </span>
+          </div>
+          <span id="scope-status-pill" class="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/60 rounded">
+            50.00 Hz LOCKED
+          </span>
+        </div>
+
+        <div class="relative rounded-lg overflow-hidden border border-slate-800/90 bg-[#02050b]">
+          <canvas id="scopeCanvas" width="350" height="125" class="w-full h-[125px] block"></canvas>
+          <div class="absolute top-1 left-2 flex items-center gap-3 text-[8.5px] font-mono">
+            <span class="text-cyan-400">━ 12V AC (Stepper Phase A)</span>
+            <span class="text-purple-400">━ 1.65V Offset (GPIO 34)</span>
+            <span class="text-rose-400">● Zero-Cross Interrupt</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5 mt-2 text-center font-mono text-[10px]">
+          <div class="bg-slate-900/90 py-1 rounded border border-slate-800">
+            <span class="text-[8px] text-slate-400 block">STEPPER V_RMS</span>
+            <span id="val-vrms" class="text-cyan-300 font-bold">12.00 V</span>
+          </div>
+          <div class="bg-slate-900/90 py-1 rounded border border-slate-800">
+            <span class="text-[8px] text-slate-400 block">WAVE PERIOD (T)</span>
+            <span id="val-period" class="text-purple-300 font-bold">20.00 ms</span>
+          </div>
+          <div class="bg-slate-900/90 py-1 rounded border border-slate-800">
+            <span class="text-[8px] text-slate-400 block">BALLAST PWM</span>
+            <span id="val-pwm" class="text-amber-300 font-bold">16.7% (40W)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Interactive Bench Controls (Water Flow Knob + 3 Village Loads) -->
+      <div class="bg-[#040812] border border-slate-800 rounded-xl p-2.5 space-y-2.5 shadow-lg">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+          <span class="text-[11px] font-bold text-white uppercase tracking-wider font-rajdhani flex items-center gap-1.5">
+            <i data-lucide="sliders" class="w-3.5 h-3.5 text-cyan-400"></i> Interactive Bench Controls
+          </span>
+          <span class="text-[9px] text-slate-400 font-mono">Test Live Scenarios</span>
+        </div>
+
+        <!-- PWM Speed Dial (River Flow) -->
+        <div class="bg-slate-900/70 p-2 rounded-lg border border-slate-800">
+          <div class="flex justify-between items-center text-[10px] mb-1">
+            <span class="font-bold text-cyan-300 flex items-center gap-1">
+              <i data-lucide="gauge" class="w-3 h-3"></i> ① 775 DC Motor Speed (Water Flow)
+            </span>
+            <span id="lbl-water-watts" class="font-mono font-bold text-white bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-700/50">
+              360 W Input
+            </span>
+          </div>
+          <input id="slider-flow" type="range" min="120" max="420" step="10" value="360" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
+          <div class="flex justify-between text-[8.5px] text-slate-400 font-mono mt-0.5">
+            <span>Drought (120W)</span>
+            <span>Winter (220W)</span>
+            <span>Nominal (360W)</span>
+          </div>
+        </div>
+
+        <!-- 3 Village Load Switches -->
+        <div class="space-y-1.5">
+          <div class="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+            <span>⑧ Village Consumer Switches</span>
+            <span id="lbl-total-village" class="font-mono text-indigo-300">320W Active</span>
+          </div>
+
+          <!-- Load 1: Health Clinic (Priority 1 - 60W) -->
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/90 border border-emerald-900/60">
+            <div class="flex items-center gap-2">
+              <span id="dot-clinic" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"></span>
+              <div>
+                <div class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                  Health Post Clinic
+                  <span class="text-[8px] font-mono px-1 py-0.2 bg-emerald-500/20 text-emerald-300 rounded">PRI #1</span>
+                </div>
+                <div class="text-[9px] text-slate-400">Vaccine Freezer &amp; Emergency LEDs (60W)</div>
+              </div>
+            </div>
+            <button id="btn-load-clinic" onclick="toggleVillageLoad('clinic')" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-emerald-500 text-slate-950 shadow-[0_0_8px_#10b981] transition">
+              ON (60W)
+            </button>
+          </div>
+
+          <!-- Load 2: Domestic Lights (Priority 2 - 100W) -->
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/90 border border-sky-900/60">
+            <div class="flex items-center gap-2">
+              <span id="dot-domestic" class="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]"></span>
+              <div>
+                <div class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                  Village Homes Lighting
+                  <span class="text-[8px] font-mono px-1 py-0.2 bg-sky-500/20 text-sky-300 rounded">PRI #2</span>
+                </div>
+                <div class="text-[9px] text-slate-400">50 Households Evening Bulbs (100W)</div>
+              </div>
+            </div>
+            <button id="btn-load-domestic" onclick="toggleVillageLoad('domestic')" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-sky-500 text-slate-950 shadow-[0_0_8px_#38bdf8] transition">
+              ON (100W)
+            </button>
+          </div>
+
+          <!-- Load 3: Grain Mill (Priority 3 - 160W) -->
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/90 border border-amber-900/60">
+            <div class="flex items-center gap-2">
+              <span id="dot-mill" class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+              <div>
+                <div class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                  Agro Grain Mill Motor
+                  <span class="text-[8px] font-mono px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded">PRI #3</span>
+                </div>
+                <div class="text-[9px] text-slate-400">Heavy Inductive Motor Load (160W)</div>
+              </div>
+            </div>
+            <button id="btn-load-mill" onclick="toggleVillageLoad('mill')" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-amber-500 text-slate-950 shadow-[0_0_8px_#f59e0b] transition">
+              ON (160W)
+            </button>
+          </div>
+        </div>
+
+        <!-- Ballast Dump Thermal Meter -->
+        <div class="p-2 rounded-lg bg-rose-950/25 border border-rose-900/60">
+          <div class="flex justify-between items-center text-[10px] mb-1">
+            <span class="font-bold text-rose-300 flex items-center gap-1">
+              <i data-lucide="flame" class="w-3 h-3 text-rose-400"></i> ⑦ Ballast Dump Bulb (240W Max)
+            </span>
+            <span id="lbl-ballast-status" class="font-mono font-bold text-amber-300">40W Dumped</span>
+          </div>
+          <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+            <div id="bar-ballast" class="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 transition-all duration-100" style="width: 16.7%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Multi-Agent AI Reasoning Log & Nepali Ward Bulletin -->
+      <div class="bg-[#040812] border border-slate-800 rounded-xl p-2.5 flex-1 flex flex-col justify-between min-h-[195px] shadow-lg">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5">
+          <span class="text-[11px] font-bold text-white uppercase tracking-wider font-rajdhani flex items-center gap-1.5">
+            <i data-lucide="bot" class="w-3.5 h-3.5 text-cyan-400"></i> Agentic AI Swarm Decision Log
+          </span>
+          <span class="text-[9px] font-mono text-emerald-400 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> FastAPI + ESP-NOW
+          </span>
+        </div>
+
+        <div id="agent-terminal" class="flex-1 bg-[#02050b] rounded-lg p-2 font-mono text-[9.5px] overflow-y-auto max-h-[115px] border border-slate-900 space-y-1.5">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Bilingual Nepali / English Bulletin -->
+        <div class="mt-2 p-2 rounded-lg bg-cyan-950/30 border border-cyan-800/50">
+          <div class="flex items-center justify-between text-[8.5px] font-mono uppercase text-cyan-400 font-bold mb-0.5">
+            <span>📢 Automated Village Dispatch (Nepali + EN)</span>
+            <span>SMS / Dashboard</span>
+          </div>
+          <p id="bulletin-text" class="text-[10px] text-slate-200 font-medium leading-snug">
+            "ग्रिड ५०.० Hz मा स्थिर छ। ३६०W उत्पादन मध्ये ३२०W गाउँमा खपत र ४०W डम्प बल्बमा सन्तुलित छ।"
+          </p>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- COMPLETE JAVASCRIPT: HARDWARE DB, 3D SCENE, PARTICLES & PHYSICS      -->
+  <!-- ===================================================================== -->
+  <script>
+    lucide.createIcons();
+
+    // -----------------------------------------------------------------------
+    // 1. EXPLANATORY HARDWARE DATABASE (ALL 8 BENCH ELEMENTS)
+    // -----------------------------------------------------------------------
+    const HARDWARE_DB = {
+      psu: {
+        badge: "PART #1 • WATER FLOW SIMULATOR",
+        price: "~NPR 650 (12V 5A Adapter / 3S Li-Ion + PWM Knob)",
+        title: "12V Power Supply & PWM Speed Controller",
+        realRole: "Represents the mountain river intake (Weir), Penstock pipe water pressure, and manual spear valve controlling how much water hits the turbine.",
+        benchRole: "Supplies 12V DC current to spin our RS-775 motor. Turning the potentiometer knob adjusts the mechanical power entering our generator (from 120W drought to 360W nominal).",
+        wiring: "12V 5A DC Supply (+) and (-) -> PWM Controller Input. PWM Output (+) and (-) -> Red & Black wires connected to RS-775 DC Motor terminals.",
+        camPos: [-5.5, 4.2, 6.2],
+        camTarget: [-4.2, 0.6, -0.5]
+      },
+      dc_motor: {
+        badge: "PART #2 • HYDRAULIC TURBINE",
+        price: "NPR 760 (Himalayan Solution - RS-775 12V)",
+        title: "RS-775 High-Torque 12V Brushed DC Motor",
+        realRole: "Represents the mechanical Pelton or Crossflow Water Turbine spun by high-pressure Himalayan river water.",
+        benchRole: "Converts 12V DC electrical energy into rotational mechanical torque (spinning at 1500 RPM) with enough force to overcome the stepper motor's magnetic resistance.",
+        wiring: "2 Solder Tabs at rear connected to PWM Speed Controller output. Mounted firmly onto baseboard via an L-shaped steel bracket. 5mm front shaft.",
+        camPos: [-2.8, 3.5, 5.2],
+        camTarget: [-2.2, 0.8, -0.5]
+      },
+      coupler: {
+        badge: "PART #3 • MECHANICAL TRANSMISSION",
+        price: "NPR 150 (5mm-to-5mm Brass Rigid/Flex Coupler)",
+        title: "5mm-to-5mm Cylindrical Brass Shaft Coupler",
+        realRole: "Represents the heavy-duty mechanical drive shaft or belt-pulley transmission linking the water turbine to the AC generator.",
+        benchRole: "Locks the 5mm shaft of the RS-775 DC Motor directly to the 5mm shaft of the NEMA 17 Stepper Motor so both shafts rotate at the exact same speed (1500 RPM).",
+        wiring: "Mechanical link: 2.5cm brass cylinder with 4 M3 grub screws tightened with an Allen key against the flat D-shafts of both motors.",
+        camPos: [0, 3.2, 4.5],
+        camTarget: [0, 0.85, -0.5]
+      },
+      stepper: {
+        badge: "PART #4 • SYNCHRONOUS AC ALTERNATOR",
+        price: "NPR 980 (Himalayan Solution - NEMA 17 Bipolar)",
+        title: "NEMA 17 Stepper Motor (Used in Reverse as AC Generator)",
+        realRole: "Represents the 3-Phase / Single-Phase Brushless Synchronous AC Alternator inside the micro-hydro powerhouse.",
+        benchRole: "Normally a stepper motor takes electricity to move. We use it IN REVERSE! Spinning its internal permanent magnet rotor past its copper stator coils induces a clean ~12V AC sine wave via Faraday's Law (ε = -N dΦ/dt).",
+        wiring: "Has 4 wires (2 coils). We use a multimeter to find Phase A (Red & Blue wires showing ~3.2Ω resistance) and connect them as our Live & Neutral 12V AC Grid Bus!",
+        camPos: [2.8, 3.5, 5.2],
+        camTarget: [2.2, 0.8, -0.5]
+      },
+      zmpt: {
+        badge: "PART #5 • GRID VOLTAGE & ZERO-CROSS SENSOR",
+        price: "NPR 280 (Himalayan Solution - ZMPT101B Module)",
+        title: "ZMPT101B Precision AC Voltage Transformer Module",
+        realRole: "Represents the powerhouse Instrument Potential Transformer (PT) & Frequency Counter panel.",
+        benchRole: "The ESP32 ADC pin will burn if connected directly to 12V AC (which swings from +17V to -17V). The ZMPT101B safely isolates and scales the wave down to a 0V–3.3V sine wave centered at 1.65V DC.",
+        wiring: "Green Screw Terminals <- 12V AC from Stepper Phase A. Output Pins: VCC -> ESP32 3.3V, GND -> ESP32 GND, OUT -> ESP32 Analog Pin GPIO 34.",
+        camPos: [2.2, 3.2, 5.8],
+        camTarget: [1.5, 0.3, 1.8]
+      },
+      esp32: {
+        badge: "PART #6 • EDGE DSP & SWARM CONTROLLER",
+        price: "NPR 550 (ESP32 DevKit V1 30-Pin Wi-Fi/BLE)",
+        title: "ESP32 Dual-Core Microcontroller (Edge Governor)",
+        realRole: "Represents the Digital Electronic Load Controller (ELC) & Autonomous Smart Grid Substation.",
+        benchRole: "Measures the exact microsecond time (T) between rising 1.65V zero-crossings on GPIO 34 to compute f = 1/T. Runs the fast PID loop to adjust GPIO 18 PWM in <20ms and streams JSON telemetry to our Python Multi-Agent AI.",
+        wiring: "GPIO 34 <- ZMPT101B OUT. GPIO 18 (5kHz PWM) -> IRLZ44N MOSFET Gate. GPIO 25, 26, 27 -> Village Load Relay/MOSFET switches. USB -> Laptop FastAPI Agent.",
+        camPos: [-1.5, 3.4, 5.8],
+        camTarget: [-1.4, 0.3, 1.8]
+      },
+      ballast: {
+        badge: "PART #7 • ELECTRONIC LOAD CONTROLLER (ELC DUMP)",
+        price: "NPR 220 (IRLZ44N MOSFET + 12V 21W Auto Bulb/Heater)",
+        title: "IRLZ44N Logic MOSFET & Thermal Ballast Dump Load",
+        realRole: "Represents the giant water-immersion heating coils or air ballast resistor bank at a micro-hydro plant that burns off excess electricity.",
+        benchRole: "When a villager turns OFF the heavy Grain Mill (160W), the turbine suddenly has 160W of extra power and tries to overspeed to 58 Hz! The ESP32 instantly increases PWM duty cycle on the MOSFET, lighting up this bulb brighter to absorb the exact 160W surplus.",
+        wiring: "ESP32 GPIO 18 -> 220Ω Resistor -> IRLZ44N Gate (G). MOSFET Drain (D) -> Ballast Bulb (-) -> 12V AC Rectified Bus (+). MOSFET Source (S) -> Common GND.",
+        camPos: [4.8, 3.4, 5.5],
+        camTarget: [4.1, 0.6, 1.5]
+      },
+      village: {
+        badge: "PART #8 • DECENTRALIZED VILLAGE MICRO-GRID",
+        price: "NPR 300 (3 Mini Visual Load Models + Switches)",
+        title: "3 Priority Village Consumer Loads (Clinic, Homes, Mill)",
+        realRole: "Represents a rural Nepalese village distribution network with critical life-safety loads and heavy commercial machinery.",
+        benchRole: "Allows judges to flip switches ON/OFF to trigger sudden Load Rejection (turning off the 160W Mill) or test Multi-Agent Game-Theory prioritization during a winter drought (protecting the 60W Health Clinic vaccine cooler).",
+        wiring: "Connected in parallel across the 12V Bus via ESP32-controlled relays/switches: #1 Clinic (60W Emerald LED), #2 Homes (100W Cyan LEDs), #3 Mill (160W Motor).",
+        camPos: [0, 4.8, 7.5],
+        camTarget: [0, 0.5, -2.2]
+      }
+    };
+
+    // -----------------------------------------------------------------------
+    // 2. SIX-STEP GUIDED WALKTHROUGH TOUR DATABASE
+    // -----------------------------------------------------------------------
+    const TOUR_STEPS = [
+      {
+        step: 1,
+        title: "Mechanical Shaft Coupling (Water Turbine → AC Alternator)",
+        desc: "We cannot bring a rushing mountain river into the exhibition hall. Instead, a <strong>12V RS-775 DC Motor</strong> (left) acts as our Water Turbine. We lock its 5mm shaft to a <strong>NEMA 17 Stepper Motor</strong> (right) using a <strong>5mm Brass Coupler</strong>. Spinning the DC motor forces the stepper motor to rotate at the exact same RPM.",
+        action: "💡 Click on Part ①, ②, or ③ in the 3D scene to inspect the mechanical drive train!",
+        focusPart: "coupler",
+        setupFn: () => {
+          sim.governorActive = true;
+          sim.waterWatts = 360;
+          sim.clinicOn = true; sim.domesticOn = true; sim.millOn = true;
+          syncUIControls();
+        }
+      },
+      {
+        step: 2,
+        title: "Generating Safe 12V 50Hz AC (Stepper Motor in Reverse)",
+        desc: "Inside the <strong>NEMA 17 Stepper Motor</strong> is a multi-pole permanent magnet rotor surrounded by copper stator windings. When spun at <strong>1,500 RPM</strong>, the magnetic flux cuts across the coils (<em>Faraday's Law: ε = -N·dΦ/dt</em>), generating a clean <strong>12V 50.00 Hz Alternating Current (AC)</strong> sine wave on its Phase A wires!",
+        action: "💡 Watch the green AC particles flowing out of the NEMA 17 Stepper and check the cyan sine wave on the right oscilloscope!",
+        focusPart: "stepper",
+        setupFn: () => {
+          sim.governorActive = true;
+          sim.waterWatts = 360;
+          sim.clinicOn = true; sim.domesticOn = true; sim.millOn = true;
+          syncUIControls();
+        }
+      },
+      {
+        step: 3,
+        title: "Safe Voltage Scaling & Zero-Crossing Detection (ZMPT101B → ESP32)",
+        desc: "An ESP32 pin only accepts 0V to 3.3V DC—feeding raw 12V AC (+17V to -17V peak) would destroy the chip. The blue <strong>ZMPT101B Transformer Sensor</strong> isolates and scales the wave down to a safe <strong>1.65V DC midpoint wave</strong>. Every time the wave crosses 1.65V going up, ESP32 <code>GPIO 34</code> triggers an interrupt to measure frequency!",
+        action: "💡 Look at the red dots on the oscilloscope—each dot is a hardware zero-crossing interrupt every 20.00 milliseconds (50 Hz)!",
+        focusPart: "zmpt",
+        setupFn: () => {
+          sim.governorActive = true;
+          sim.waterWatts = 360;
+          sim.clinicOn = true; sim.domesticOn = true; sim.millOn = true;
+          syncUIControls();
+        }
+      },
+      {
+        step: 4,
+        title: "THE CRISIS: Ungoverned Load Rejection & Turbine Runaway!",
+        desc: "Watch what happens in a traditional village plant WITHOUT our governor! We just switched the <strong>Governor OFF</strong> and turned OFF the heavy <strong>160W Grain Mill</strong>. Because 360W of water is still pushing the turbine while village demand dropped to 160W, the shaft overspeeds wildly to <strong>2,100+ RPM (~70 Hz)</strong>! In real life, this burns out village TVs, transformers, and generator windings.",
+        action: "🚨 Notice the red warning state, the ultra-fast spinning shaft, and the compressed high-frequency sine wave!",
+        focusPart: "village",
+        setupFn: () => {
+          sim.governorActive = false;
+          sim.waterWatts = 360;
+          sim.clinicOn = true; sim.domesticOn = true; sim.millOn = false;
+          syncUIControls();
+          appendLog("CRISIS DEMO", "border-rose-500", "Governor disabled & 160W Mill disconnected!", "200W unabsorbed surplus causing catastrophic rotor overspeed (>65 Hz)!");
+          bulletinText.innerText = "⚠️ चेतावनी: गभर्नर बन्द हुँदा मिल बन्द भई फ्रिक्वेन्सी ६५+ Hz नाघ्यो! उपकरण जल्ने खतरा!";
+        }
+      },
+      {
+        step: 5,
+        title: "THE FAST FIX: Edge PWM Ballast Dump Load (50.00 Hz Restored!)",
+        desc: "Now we switched the <strong>Urja-Swarm Governor ON</strong> while the Grain Mill is still OFF! Within 20 milliseconds, the ESP32 calculates the 200W surplus and drives the <strong>IRLZ44N MOSFET (GPIO 18)</strong> at <strong>83.3% PWM duty cycle</strong>. The orange <strong>Ballast Dump Bulb</strong> blazes brightly, absorbing the exact 200W surplus (`360W = 160W Village + 200W Ballast`) and locking frequency back to <strong>50.00 Hz</strong>!",
+        action: "🔥 Look at Part ⑦ (front right)—the Ballast Dump Bulb is glowing bright orange to burn off the excess 200W!",
+        focusPart: "ballast",
+        setupFn: () => {
+          sim.governorActive = true;
+          sim.waterWatts = 360;
+          sim.clinicOn = true; sim.domesticOn = true; sim.millOn = false;
+          syncUIControls();
+          appendLog("Edge PID/PWM", "border-emerald-500", "Shunted 200W surplus to Ballast Bulb (83.3% PWM).", "Rotor decelerated back to 1500 RPM (50.00 Hz locked).");
+          bulletinText.innerText = "\"मिल बन्द हुँदा उब्रिएको २००W उर्जा डम्प बल्बमा पठाई ग्रिड ५०.० Hz मा स्थिर राखिएको छ।\"";
+        }
+      },
+      {
+        step: 6,
+        title: "AGENTIC AI UPGRADE: Winter Drought & Game-Theory Priority Bidding",
+        desc: "What if river water drops in winter to <strong>180W</strong> while the village wants <strong>320W</strong>? A normal ballast dump cannot create power—even at 0% ballast, total demand exceeds supply and the grid collapses! Our <strong>Multi-Agent AI</strong> steps in: the <strong>Clinic Agent (60W)</strong> uses its Priority #1 token to protect vaccines, <strong>Homes (100W)</strong> stay lit, and the <strong>Mill Agent (160W)</strong> autonomously sheds until water returns!",
+        action: "🤖 Check the Agentic AI Decision Log on the bottom right to see the autonomous negotiation in action!",
+        focusPart: "esp32",
+        setupFn: () => {
+          sim.governorActive = true;
+          sim.waterWatts = 180; // Only enough for Clinic (60W) + Homes (100W) + 20W Ballast!
+          sim.clinicOn = true; sim.domesticOn = true; sim.millOn = true; // Agent will automatically shed Mill!
+          syncUIControls();
+          appendLog("Hydro Sensor", "border-amber-500", "River inflow dropped to 180W (Winter Drought).", "Total demand (320W) exceeds generation by 140W!");
+        }
+      }
+    ];
+
+    // -----------------------------------------------------------------------
+    // 3. LIVE SIMULATION STATE & PHYSICS ENGINE PARAMETERS
+    // -----------------------------------------------------------------------
+    const sim = {
+      waterWatts: 360,       // Controlled by 775 DC motor speed slider (120W to 420W)
+      clinicOn: true,        // Priority 1: 60W
+      domesticOn: true,      // Priority 2: 100W
+      millOn: true,          // Priority 3: 160W
+      clinicWatts: 60,
+      domesticWatts: 100,
+      millWatts: 160,
+      ballastMaxWatts: 240,  // Max capacity of IRLZ44N + 12V Automotive Bulb array
+      ballastWatts: 40,      // Current power dissipated in ballast bulb
+      ballastPwm: 16.7,      // Duty cycle % (0 to 100)
+      governorActive: true,  // True = AI + Edge PWM active; False = Ungoverned runaway
+      rpm: 1500,             // 1500 RPM = 50.00 Hz for 4-pole synchronous machine
+      frequency: 50.00,
+      vRms: 12.00,
+      selectedPart: 'coupler',
+      currentTourStep: 1,
+      cardMinimized: false
+    };
+
+    // DOM References
+    const eqPturbine = document.getElementById('eq-pturbine');
+    const eqPvillage = document.getElementById('eq-pvillage');
+    const eqPballast = document.getElementById('eq-pballast');
+    const eqPsurplus = document.getElementById('eq-psurplus');
+    const eqSurplusBox = document.getElementById('eq-surplus-box');
+    const eqRpm = document.getElementById('eq-rpm');
+    const eqHzBadge = document.getElementById('eq-hz-badge');
+    const scopeCanvas = document.getElementById('scopeCanvas');
+    const scopeCtx = scopeCanvas.getContext('2d');
+    const scopeStatusPill = document.getElementById('scope-status-pill');
+    const valVrms = document.getElementById('val-vrms');
+    const valPeriod = document.getElementById('val-period');
+    const valPwm = document.getElementById('val-pwm');
+    const sliderFlow = document.getElementById('slider-flow');
+    const lblWaterWatts = document.getElementById('lbl-water-watts');
+    const lblTotalVillage = document.getElementById('lbl-total-village');
+    const lblBallastStatus = document.getElementById('lbl-ballast-status');
+    const barBallast = document.getElementById('bar-ballast');
+    const agentTerminal = document.getElementById('agent-terminal');
+    const bulletinText = document.getElementById('bulletin-text');
+
+    // Web Audio Synthesizer for Subtle Tactile Feedback
+    let audioCtx = null;
+    function playTone(freq, type = 'sine', dur = 0.07, gainVal = 0.025) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        g.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (e) {}
+    }
+
+    function appendLog(agent, borderClass, action, detail) {
+      const t = new Date().toTimeString().split(' ')[0];
+      const item = document.createElement('div');
+      item.className = `border-l-2 pl-2 py-0.5 leading-snug ${borderClass}`;
+      item.innerHTML = `
+        <div><span class="text-slate-500">[${t}]</span> <strong class="text-white">${agent}:</strong> <span class="text-slate-200">${action}</span></div>
+        ${detail ? `<div class="text-[8.5px] text-slate-400">↳ ${detail}</div>` : ''}
+      `;
+      agentTerminal.appendChild(item);
+      agentTerminal.scrollTop = agentTerminal.scrollHeight;
+      while (agentTerminal.children.length > 18) {
+        agentTerminal.removeChild(agentTerminal.firstChild);
+      }
+    }
+
+    // Initial Boot Log
+    appendLog("System Boot", "border-cyan-400", "3D Hardware Digital Twin initialized.", "360W Turbine = 320W Village + 40W Ballast (50.00 Hz Locked).");
+
+    // -----------------------------------------------------------------------
+    // 4. THREE.JS 3D WORKBENCH CONSTRUCTION
+    // -----------------------------------------------------------------------
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x040711);
+    scene.fog = new THREE.FogExp2(0x040711, 0.028);
+
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 6.8, 11.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 - 0.03;
+    controls.minDistance = 3.2;
+    controls.maxDistance = 18;
+    controls.target.set(0, 0.5, 0);
+
+    // Smooth Camera Focus Interpolation State
+    let camAnim = null;
+    function flyCameraTo(posArr, targetArr) {
+      camAnim = {
+        startPos: camera.position.clone(),
+        endPos: new THREE.Vector3(...posArr),
+        startTarget: controls.target.clone(),
+        endTarget: new THREE.Vector3(...targetArr),
+        progress: 0
+      };
+    }
+
+    function resetCameraView() {
+      flyCameraTo([0, 6.8, 11.5], [0, 0.5, 0]);
+    }
+
+    // Studio Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
+    dirLight.position.set(6, 12, 8);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+    rimLight.position.set(-8, 6, -6);
+    scene.add(rimLight);
+
+    // Dynamic PointLight for the Ballast Dump Bulb
+    const ballastPointLight = new THREE.PointLight(0xff9900, 1.2, 6.5, 2);
+    ballastPointLight.position.set(4.1, 1.3, 1.5);
+    scene.add(ballastPointLight);
+
+    // Shared Materials
+    const matBaseboard = new THREE.MeshStandardMaterial({ color: 0x0d1526, roughness: 0.75, metalness: 0.15 });
+    const matSteel = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.88, roughness: 0.22 });
+    const matDarkSteel = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.65, roughness: 0.4 });
+    const matBrass = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
+    const matAluminum = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.78, roughness: 0.28 });
+    const matStatorBlack = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.55, metalness: 0.3 });
+    const matPcbBlue = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4, metalness: 0.2 });
+    const matPcbDark = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.45, metalness: 0.2 });
+    const matCopper = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.3 });
+
+    // Baseboard Platform + Engineering Grid
+    const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(13.5, 0.4, 7.6), matBaseboard);
+    baseMesh.position.y = -0.2;
+    baseMesh.receiveShadow = true;
+    scene.add(baseMesh);
+
+    const grid = new THREE.GridHelper(13.2, 26, 0x0ea5e9, 0x1e293b);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    // Selection Highlight Ring on Baseboard
+    const highlightRingGeo = new THREE.RingGeometry(0.85, 1.02, 36);
+    const highlightRingMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+    const highlightRing = new THREE.Mesh(highlightRingGeo, highlightRingMat);
+    highlightRing.rotation.x = -Math.PI / 2;
+    highlightRing.position.set(0, 0.03, -0.5);
+    scene.add(highlightRing);
+
+    // Rotating Shaft Group (775 Shaft + Brass Coupler + NEMA 17 Shaft + Torque Rings)
+    const rotatingGroup = new THREE.Group();
+    rotatingGroup.position.set(0, 0.9, -0.5);
+    scene.add(rotatingGroup);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 1: 12V BATTERY / PSU + PWM SPEED CONTROLLER KNOB
+    // -----------------------------------------------------------------------
+    const psuGroup = new THREE.Group();
+    psuGroup.position.set(-4.6, 0.0, -0.5);
+    scene.add(psuGroup);
+
+    // 12V Power Brick / 3S Li-Ion Pack
+    const psuBox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.75, 2.0), matDarkSteel);
+    psuBox.position.set(0, 0.38, -0.5);
+    psuBox.castShadow = true;
+    psuGroup.add(psuBox);
+
+    // PWM Speed Controller Module & Potentiometer Dial
+    const pwmPcb = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 1.1), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.5 }));
+    pwmPcb.position.set(0.1, 0.06, 1.15);
+    psuGroup.add(pwmPcb);
+
+    const pwmKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.35, 24), matAluminum);
+    pwmKnob.position.set(0.1, 0.28, 1.15);
+    psuGroup.add(pwmKnob);
+
+    const pwmIndicator = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.2), new THREE.MeshBasicMaterial({ color: 0x06b6d4 }));
+    pwmIndicator.position.set(0, 0.18, 0.08);
+    pwmKnob.add(pwmIndicator);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 2: RS-775 12V HIGH-TORQUE DC MOTOR (WATER TURBINE)
+    // -----------------------------------------------------------------------
+    const dcMotorGroup = new THREE.Group();
+    dcMotorGroup.position.set(-2.3, 0.9, -0.5);
+    scene.add(dcMotorGroup);
+
+    const dcCan = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 2.1, 32), matSteel);
+    dcCan.rotation.z = Math.PI / 2;
+    dcCan.castShadow = true;
+    dcMotorGroup.add(dcCan);
+
+    // Cooling vents band
+    const dcVentBand = new THREE.Mesh(new THREE.CylinderGeometry(0.735, 0.735, 0.45, 24), matDarkSteel);
+    dcVentBand.rotation.z = Math.PI / 2;
+    dcVentBand.position.x = 0.4;
+    dcMotorGroup.add(dcVentBand);
+
+    // L-Mounting Bracket
+    const dcBracket = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.65, 1.65), matDarkSteel);
+    dcBracket.position.set(1.12, -0.08, 0);
+    dcMotorGroup.add(dcBracket);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 3: 5mm-to-5mm BRASS SHAFT COUPLER (ROTATING)
+    // -----------------------------------------------------------------------
+    // 775 Shaft + Stepper Shaft inside rotatingGroup
+    const fullShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 2.6, 16), matSteel);
+    fullShaft.rotation.z = Math.PI / 2;
+    rotatingGroup.add(fullShaft);
+
+    const couplerCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.85, 24), matBrass);
+    couplerCyl.rotation.z = Math.PI / 2;
+    couplerCyl.castShadow = true;
+    rotatingGroup.add(couplerCyl);
+
+    // Set screws + visual rotation fins so rotation speed is unmistakable
+    for (let i = 0; i < 4; i++) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.06, 0.56), matDarkSteel);
+      fin.rotation.x = (i * Math.PI) / 4;
+      rotatingGroup.add(fin);
+    }
+
+    // Glowing Cyan Torque Ring around Coupler
+    const torqueRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42, 0.025, 12, 32),
+      new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.7 })
+    );
+    torqueRing.rotation.y = Math.PI / 2;
+    rotatingGroup.add(torqueRing);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 4: NEMA 17 BIPOLAR STEPPER MOTOR (AC ALTERNATOR)
+    // -----------------------------------------------------------------------
+    const stepperGroup = new THREE.Group();
+    stepperGroup.position.set(2.2, 0.9, -0.5);
+    scene.add(stepperGroup);
+
+    const nemFront = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.45, 1.45), matAluminum);
+    nemFront.position.x = -0.78;
+    nemFront.castShadow = true;
+    stepperGroup.add(nemFront);
+
+    const nemCore = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.38, 1.38), matStatorBlack);
+    nemCore.castShadow = true;
+    stepperGroup.add(nemCore);
+
+    const nemBack = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.45, 1.45), matAluminum);
+    nemBack.position.x = 0.78;
+    nemBack.castShadow = true;
+    stepperGroup.add(nemBack);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 5: ZMPT101B AC VOLTAGE & ZERO-CROSS SENSOR MODULE
+    // -----------------------------------------------------------------------
+    const zmptGroup = new THREE.Group();
+    zmptGroup.position.set(1.5, 0.06, 1.85);
+    scene.add(zmptGroup);
+
+    const zmptPcb = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 1.0), matPcbBlue);
+    zmptPcb.castShadow = true;
+    zmptGroup.add(zmptPcb);
+
+    // Signature Blue ZMPT101B Transformer Cube
+    const zmptCube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.75, 0.68, 0.72),
+      new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.35 })
+    );
+    zmptCube.position.set(-0.35, 0.38, 0);
+    zmptCube.castShadow = true;
+    zmptGroup.add(zmptCube);
+
+    // Green Screw Terminal Block
+    const zmptTerm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.38, 0.55),
+      new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4 })
+    );
+    zmptTerm.position.set(-0.82, 0.22, 0);
+    zmptGroup.add(zmptTerm);
+
+    // Brass Multi-Turn Trimpot
+    const zmptPot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.28, 0.28),
+      new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4 })
+    );
+    zmptPot.position.set(0.35, 0.18, 0.18);
+    zmptGroup.add(zmptPot);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 6: ESP32 DEVKIT V1 MICROCONTROLLER
+    // -----------------------------------------------------------------------
+    const espGroup = new THREE.Group();
+    espGroup.position.set(-1.4, 0.06, 1.85);
+    scene.add(espGroup);
+
+    const espPcb = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 1.1), matPcbDark);
+    espPcb.castShadow = true;
+    espGroup.add(espPcb);
+
+    const espShield = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.12, 0.68), matAluminum);
+    espShield.position.set(-0.3, 0.08, 0);
+    espGroup.add(espShield);
+
+    const espLedMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const espLed = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), espLedMat);
+    espLed.position.set(0.65, 0.08, 0.32);
+    espGroup.add(espLed);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 7: IRLZ44N MOSFET + 12V BALLAST DUMP BULB
+    // -----------------------------------------------------------------------
+    const ballastGroup = new THREE.Group();
+    ballastGroup.position.set(4.1, 0.06, 1.5);
+    scene.add(ballastGroup);
+
+    // MOSFET Heatsink + TO-220 package
+    const mosfetSink = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.75, 0.18), matAluminum);
+    mosfetSink.position.set(-0.75, 0.38, 0.2);
+    ballastGroup.add(mosfetSink);
+
+    // Bulb Socket & Glowing Glass Sphere
+    const bulbSocket = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.35, 20), matDarkSteel);
+    bulbSocket.position.y = 0.18;
+    ballastGroup.add(bulbSocket);
+
+    const bulbGlassMat = new THREE.MeshStandardMaterial({
+      color: 0xffedd5,
+      transparent: true,
+      opacity: 0.78,
+      roughness: 0.15,
+      emissive: 0xff8800,
+      emissiveIntensity: 0.4
+    });
+    const bulbGlass = new THREE.Mesh(new THREE.SphereGeometry(0.52, 28, 28), bulbGlassMat);
+    bulbGlass.position.y = 0.78;
+    ballastGroup.add(bulbGlass);
+
+    // -----------------------------------------------------------------------
+    // BUILD PART 8: THREE VILLAGE LOAD NODES (BACK ROW OF BOARD)
+    // -----------------------------------------------------------------------
+    const villageGroup = new THREE.Group();
+    villageGroup.position.set(0, 0.06, -2.55);
+    scene.add(villageGroup);
+
+    function createVillageNodeMesh(xOffset, roofColorHex) {
+      const g = new THREE.Group();
+      g.position.set(xOffset, 0, 0);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.65, 1.15), matDarkSteel);
+      base.position.y = 0.32;
+      base.castShadow = true;
+      g.add(base);
+
+      const beaconMat = new THREE.MeshStandardMaterial({
+        color: roofColorHex,
+        emissive: roofColorHex,
+        emissiveIntensity: 0.9,
+        roughness: 0.2
+      });
+      const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.22, 20), beaconMat);
+      beacon.position.y = 0.75;
+      g.add(beacon);
+      return { group: g, beaconMat };
+    }
+
+    const clinicNode3D = createVillageNodeMesh(-2.5, 0x10b981);   // Priority 1 Emerald
+    const domesticNode3D = createVillageNodeMesh(0.0, 0x38bdf8);  // Priority 2 Sky
+    const millNode3D = createVillageNodeMesh(2.5, 0xf59e0b);      // Priority 3 Amber
+
+    villageGroup.add(clinicNode3D.group);
+    villageGroup.add(domesticNode3D.group);
+    villageGroup.add(millNode3D.group);
+
+    // -----------------------------------------------------------------------
+    // 5. 3D WIRE PATHS & ANIMATED ENERGY FLOW PARTICLES
+    // -----------------------------------------------------------------------
+    const particleStreams = [];
+
+    function createWireWithParticles(pts, wireColorHex, particleColorHex, count = 6, type = 'dc') {
+      const vectors = pts.map(p => new THREE.Vector3(...p));
+      const curve = new THREE.CatmullRomCurve3(vectors);
+      const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.032, 8, false);
+      const tubeMat = new THREE.MeshStandardMaterial({ color: wireColorHex, roughness: 0.35 });
+      scene.add(new THREE.Mesh(tubeGeo, tubeMat));
+
+      const pMat = new THREE.MeshBasicMaterial({ color: particleColorHex });
+      const pGeo = new THREE.SphereGeometry(0.075, 10, 10);
+      const meshes = [];
+      for (let i = 0; i < count; i++) {
+        const m = new THREE.Mesh(pGeo, pMat);
+        scene.add(m);
+        meshes.push({ mesh: m, offset: i / count });
+      }
+      particleStreams.push({ curve, meshes, type });
+    }
+
+    // 1. Blue DC Power: PSU/PWM -> RS-775 DC Motor
+    createWireWithParticles(
+      [[-4.5, 0.2, 0.65], [-3.8, 0.55, 0.4], [-3.2, 0.85, -0.4]],
+      0x0284c7, 0x38bdf8, 6, 'dc'
+    );
+
+    // 2. Green AC Output: NEMA 17 Stepper Phase A -> ZMPT101B Screw Terminal
+    createWireWithParticles(
+      [[2.1, 0.6, 0.2], [1.2, 0.5, 1.1], [0.68, 0.28, 1.85]],
+      0x059669, 0x34d399, 6, 'ac'
+    );
+
+    // 3. Green AC Bus: NEMA 17 Stepper -> Village Loads Row
+    createWireWithParticles(
+      [[2.2, 0.6, -1.2], [1.5, 0.35, -2.0], [-2.5, 0.35, -2.1]],
+      0x059669, 0x34d399, 8, 'village_ac'
+    );
+
+    // 4. Purple Zero-Cross ADC Signal: ZMPT101B OUT -> ESP32 GPIO 34
+    createWireWithParticles(
+      [[1.9, 0.2, 1.85], [0.2, 0.55, 2.1], [-0.5, 0.2, 1.85]],
+      0x7e22ce, 0xc084fc, 5, 'zcross'
+    );
+
+    // 5. Amber/Orange 5kHz PWM Signal: ESP32 GPIO 18 -> IRLZ44N MOSFET & Ballast Bulb
+    createWireWithParticles(
+      [[-0.4, 0.2, 1.65], [1.6, 0.65, 1.4], [3.4, 0.35, 1.5]],
+      0xd97706, 0xfbbf24, 6, 'pwm'
+    );
+
+    // -----------------------------------------------------------------------
+    // 6. FLOATING 3D CALLOUT PINS IN HTML OVERLAY
+    // -----------------------------------------------------------------------
+    const PIN_CONFIGS = [
+      { id: 'psu', num: '①', label: '12V + PWM Knob', pos: new THREE.Vector3(-4.6, 1.15, -0.2), color: 'border-sky-400 text-sky-300' },
+      { id: 'dc_motor', num: '②', label: 'RS-775 Turbine', pos: new THREE.Vector3(-2.3, 1.85, -0.5), color: 'border-cyan-400 text-cyan-300' },
+      { id: 'coupler', num: '③', label: '5mm Brass Coupler', pos: new THREE.Vector3(0.0, 1.55, -0.5), color: 'border-amber-400 text-amber-300' },
+      { id: 'stepper', num: '④', label: 'NEMA 17 Alternator', pos: new THREE.Vector3(2.2, 1.85, -0.5), color: 'border-emerald-400 text-emerald-300' },
+      { id: 'zmpt', num: '⑤', label: 'ZMPT101B Sensor', pos: new THREE.Vector3(1.5, 1.0, 1.85), color: 'border-purple-400 text-purple-300' },
+      { id: 'esp32', num: '⑥', label: 'ESP32 AI Edge', pos: new THREE.Vector3(-1.4, 0.75, 1.85), color: 'border-cyan-400 text-cyan-300' },
+      { id: 'ballast', num: '⑦', label: 'MOSFET + Dump Bulb', pos: new THREE.Vector3(4.1, 1.6, 1.5), color: 'border-rose-400 text-rose-300' },
+      { id: 'village', num: '⑧', label: 'Village Load Nodes', pos: new THREE.Vector3(0.0, 1.25, -2.55), color: 'border-indigo-400 text-indigo-300' }
+    ];
+
+    const pinsContainer = document.getElementById('pins-container');
+    const pinElements = {};
+
+    PIN_CONFIGS.forEach(cfg => {
+      const el = document.createElement('div');
+      el.className = `pin-marker bg-[#070c18]/90 backdrop-blur-md border ${cfg.color} px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shadow-lg flex items-center gap-1`;
+      el.innerHTML = `<span>${cfg.num}</span> <span>${cfg.label}</span>`;
+      el.onclick = () => selectComponent(cfg.id);
+      pinsContainer.appendChild(el);
+      pinElements[cfg.id] = { el, pos: cfg.pos };
+    });
+
+    function updatePinPositions() {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      PIN_CONFIGS.forEach(cfg => {
+        const item = pinElements[cfg.id];
+        const v = item.pos.clone().project(camera);
+        if (v.z > 1) {
+          item.el.style.display = 'none';
+        } else {
+          item.el.style.display = 'flex';
+          const x = (v.x * 0.5 + 0.5) * w;
+          const y = (-(v.y * 0.5) + 0.5) * h;
+          item.el.style.left = `${x}px`;
+          item.el.style.top = `${y}px`;
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. INTERACTIVE COMPONENT SELECTION & GUIDED TOUR HANDLERS
+    // -----------------------------------------------------------------------
+    function selectComponent(partId, moveCam = true) {
+      sim.selectedPart = partId;
+      const info = HARDWARE_DB[partId];
+      if (!info) return;
+
+      playTone(580, 'sine', 0.05);
+
+      // Update Card Text
+      document.getElementById('card-badge').innerText = info.badge;
+      document.getElementById('card-price').innerText = info.price;
+      document.getElementById('card-title').innerText = info.title;
+      document.getElementById('card-real-role').innerText = info.realRole;
+      document.getElementById('card-bench-role').innerText = info.benchRole;
+      document.getElementById('card-wiring').innerText = info.wiring;
+
+      // Highlight active button in bottom bar
+      document.querySelectorAll('.part-btn').forEach(btn => {
+        btn.className = "part-btn px-2 py-1 rounded text-[10px] font-medium bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition";
+      });
+      const activeBtn = document.getElementById(`part-btn-${partId}`);
+      if (activeBtn) {
+        activeBtn.className = "part-btn px-2 py-1 rounded text-[10px] font-bold bg-cyan-500 text-slate-950 shadow-[0_0_10px_#06b6d4] transition";
+      }
+
+      // Highlight active 3D Pin
+      Object.keys(pinElements).forEach(k => {
+        pinElements[k].el.classList.toggle('active-pin', k === partId);
+      });
+
+      // Move 3D Highlight Ring under selected part
+      const targetPos = info.camTarget;
+      highlightRing.position.set(targetPos[0], 0.03, targetPos[2]);
+
+      if (moveCam) {
+        flyCameraTo(info.camPos, info.camTarget);
+      }
+    }
+
+    function toggleCardMinimize() {
+      sim.cardMinimized = !sim.cardMinimized;
+      const body = document.getElementById('card-body');
+      const icon = document.getElementById('card-min-icon');
+      body.style.display = sim.cardMinimized ? 'none' : 'block';
+      icon.setAttribute('data-lucide', sim.cardMinimized ? 'chevron-up' : 'chevron-down');
+      lucide.createIcons();
+    }
+
+    function selectTourStep(stepNum) {
+      sim.currentTourStep = stepNum;
+      const st = TOUR_STEPS.find(s => s.step === stepNum);
+      if (!st) return;
+
+      playTone(440 + stepNum * 40, 'triangle', 0.09);
+
+      // Update Tour Step Buttons
+      document.querySelectorAll('.tour-btn').forEach((b, idx) => {
+        if (idx + 1 === stepNum) {
+          b.className = "tour-btn px-2 py-1 rounded text-[10px] font-bold transition shrink-0 bg-cyan-500 text-slate-950 shadow-[0_0_10px_#06b6d4]";
+        } else {
+          b.className = "tour-btn px-2 py-1 rounded text-[10px] font-semibold transition shrink-0 bg-slate-800/80 text-slate-300 hover:bg-slate-700";
+        }
+      });
+
+      // Update Banner Content
+      document.getElementById('tour-step-badge').innerText = `STEP ${st.step} OF 6`;
+      document.getElementById('tour-step-title').innerHTML = st.title;
+      document.getElementById('tour-step-desc').innerHTML = st.desc;
+      document.getElementById('tour-step-action').firstElementChild.innerHTML = st.action;
+
+      // Configure simulation state for this educational step
+      if (st.setupFn) st.setupFn();
+      selectComponent(st.focusPart, true);
+    }
+
+    function nextTourStep() {
+      const next = sim.currentTourStep < 6 ? sim.currentTourStep + 1 : 1;
+      selectTourStep(next);
+    }
+
+    function prevTourStep() {
+      const prev = sim.currentTourStep > 1 ? sim.currentTourStep - 1 : 6;
+      selectTourStep(prev);
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. USER CONTROLS: GOVERNOR MODE, LOADS & WATER FLOW SLIDER
+    // -----------------------------------------------------------------------
+    function setGovernorActive(active) {
+      sim.governorActive = active;
+      playTone(active ? 620 : 240, active ? 'sine' : 'sawtooth', 0.12);
+      syncUIControls();
+
+      if (active) {
+        appendLog("Governor Mode", "border-emerald-400", "AI + Edge PWM Governor ENABLED.", "Active ballast load balancing restoring 50.00 Hz.");
+      } else {
+        appendLog("Governor Mode", "border-rose-500", "WARNING: Governor DISABLED (Ungoverned Mode)!", "Ballast dump switched to 0W. Frequency will drift with load!");
+      }
+    }
+
+    function toggleVillageLoad(node) {
+      if (node === 'clinic') sim.clinicOn = !sim.clinicOn;
+      if (node === 'domestic') sim.domesticOn = !sim.domesticOn;
+      if (node === 'mill') sim.millOn = !sim.millOn;
+
+      playTone(380, 'sine', 0.07);
+      syncUIControls();
+
+      const stateStr = (node === 'clinic' ? sim.clinicOn : node === 'domestic' ? sim.domesticOn : sim.millOn) ? 'CONNECTED' : 'DISCONNECTED';
+      appendLog("Switchboard", "border-indigo-400", `Village ${node.toUpperCase()} load ${stateStr}.`, `Recalculating power balance equation.`);
+    }
+
+    sliderFlow.addEventListener('input', (e) => {
+      sim.waterWatts = parseFloat(e.target.value);
+      syncUIControls();
+    });
+
+    function syncUIControls() {
+      sliderFlow.value = sim.waterWatts;
+      lblWaterWatts.innerText = `${sim.waterWatts} W Input`;
+
+      // Governor Buttons
+      const btnOn = document.getElementById('btn-gov-on');
+      const btnOff = document.getElementById('btn-gov-off');
+      if (sim.governorActive) {
+        btnOn.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-slate-950 shadow-[0_0_10px_#10b981] transition";
+        btnOff.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 hover:text-rose-300 transition";
+      } else {
+        btnOn.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 hover:text-emerald-300 transition";
+        btnOff.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500 text-white shadow-[0_0_10px_#f43f5e] transition";
+      }
+
+      // Clinic Button
+      const btnClinic = document.getElementById('btn-load-clinic');
+      const dotClinic = document.getElementById('dot-clinic');
+      btnClinic.innerText = sim.clinicOn ? "ON (60W)" : "OFF (0W)";
+      btnClinic.className = sim.clinicOn
+        ? "px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-emerald-500 text-slate-950 shadow-[0_0_8px_#10b981] transition"
+        : "px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700 transition";
+      dotClinic.className = sim.clinicOn ? "w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" : "w-2.5 h-2.5 rounded-full bg-slate-600";
+
+      // Domestic Button
+      const btnDom = document.getElementById('btn-load-domestic');
+      const dotDom = document.getElementById('dot-domestic');
+      btnDom.innerText = sim.domesticOn ? "ON (100W)" : "OFF (0W)";
+      btnDom.className = sim.domesticOn
+        ? "px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-sky-500 text-slate-950 shadow-[0_0_8px_#38bdf8] transition"
+        : "px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700 transition";
+      dotDom.className = sim.domesticOn ? "w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" : "w-2.5 h-2.5 rounded-full bg-slate-600";
+
+      // Mill Button
+      const btnMill = document.getElementById('btn-load-mill');
+      const dotMill = document.getElementById('dot-mill');
+      btnMill.innerText = sim.millOn ? "ON (160W)" : "OFF (0W)";
+      btnMill.className = sim.millOn
+        ? "px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-amber-500 text-slate-950 shadow-[0_0_8px_#f59e0b] transition"
+        : "px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700 transition";
+      dotMill.className = sim.millOn ? "w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]" : "w-2.5 h-2.5 rounded-full bg-slate-600";
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. MAIN PHYSICS, AGENT NEGOTIATION & OSCILLOSCOPE LOOP
+    // -----------------------------------------------------------------------
+    let lastTime = performance.now();
+    let scopePhase = 0;
+    let agentTimer = 0;
+
+    function animateLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      // 1. Compute Active Village Demand
+      const villageWatts =
+        (sim.clinicOn ? sim.clinicWatts : 0) +
+        (sim.domesticOn ? sim.domesticWatts : 0) +
+        (sim.millOn ? sim.millWatts : 0);
+
+      // 2. Governor Logic (Fast Edge PWM + Multi-Agent Drought Negotiation)
+      if (sim.governorActive) {
+        // Fast Edge PWM: Dump any excess power above village demand into Ballast Bulb
+        const rawExcess = sim.waterWatts - villageWatts;
+        sim.ballastWatts = Math.max(0, Math.min(sim.ballastMaxWatts, rawExcess));
+        sim.ballastPwm = (sim.ballastWatts / sim.ballastMaxWatts) * 100;
+
+        // Multi-Agent AI Check (Runs every 0.35s for drought shedding / restoration)
+        agentTimer += dt;
+        if (agentTimer > 0.35) {
+          agentTimer = 0;
+          const netBalance = sim.waterWatts - (villageWatts + sim.ballastWatts);
+
+          // Drought Deficit: Not enough water for current village loads!
+          if (netBalance < -5) {
+            if (sim.millOn) {
+              sim.millOn = false;
+              syncUIControls();
+              playTone(300, 'square', 0.14);
+              appendLog("Mill Agent (PRI #3)", "border-amber-400", "Autonomously shed 160W Grain Mill motor.", `Water input (${sim.waterWatts}W) insufficient for 320W load.`);
+              appendLog("Clinic Agent (PRI #1)", "border-emerald-400", "Emergency Priority Token verified: 60W Vaccine Cooler protected.", "Zero interruption to healthcare.");
+              bulletinText.innerText = `"पानीको बहाव (${sim.waterWatts}W) घट्दा मिल बन्द गरी स्वास्थ्य चौकी (६०W) र घरको बत्ती (१००W) सुरक्षित गरियो।"`;
+            } else if (sim.domesticOn && (sim.waterWatts < sim.clinicWatts + sim.domesticWatts)) {
+              sim.domesticOn = false;
+              syncUIControls();
+              playTone(250, 'sawtooth', 0.14);
+              appendLog("Domestic Agent (PRI #2)", "border-sky-400", "Shed 100W Domestic Lights due to extreme drought.", "Preserving final 60W exclusively for Health Clinic.");
+              bulletinText.innerText = `"अत्यधिक सुख्खायाम (${sim.waterWatts}W): स्वास्थ्य चौकीको भ्याक्सिन फ्रिज मात्र सञ्चालनमा छ।"`;
+            }
+          }
+          // Water Restored: Reconnect loads in priority order if plenty of surplus exists
+          else if (sim.waterWatts >= 340 && (!sim.millOn || !sim.domesticOn)) {
+            if (!sim.domesticOn) {
+              sim.domesticOn = true;
+              syncUIControls();
+              appendLog("Domestic Agent", "border-sky-400", "Water flow restored: Reconnected 100W Village Lighting.", "Grid stable at 50.00 Hz.");
+            } else if (!sim.millOn) {
+              sim.millOn = true;
+              syncUIControls();
+              appendLog("Mill Agent", "border-amber-400", "Surplus water verified: Reconnected 160W Grain Mill.", "Full village service restored at 50.00 Hz.");
+              bulletinText.innerText = `"पर्याप्त पानी (${sim.waterWatts}W) उपलब्ध भएपछि मिल र सम्पूर्ण गाउँमा विद्युत सुचारु भयो।"`;
+            }
+          }
+        }
+      } else {
+        // Governor OFF: Ballast dump is completely inactive (0W)
+        sim.ballastWatts = 0;
+        sim.ballastPwm = 0;
+      }
+
+      // 3. Recompute Final Power Surplus/Deficit & Swing Equation for Rotor RPM
+      const activeVillage =
+        (sim.clinicOn ? sim.clinicWatts : 0) +
+        (sim.domesticOn ? sim.domesticWatts : 0) +
+        (sim.millOn ? sim.millWatts : 0);
+
+      const totalConsumed = activeVillage + sim.ballastWatts;
+      const netSurplusWatts = sim.waterWatts - totalConsumed;
+
+      // Target steady-state RPM based on power mismatch:
+      // Balanced (0W surplus) -> 1500 RPM (50.00 Hz).
+      // Each +1W of unabsorbed surplus pushes equilibrium speed up by ~3.2 RPM
+      const targetRpm = Math.max(400, Math.min(2400, 1500 + netSurplusWatts * 3.2));
+      sim.rpm += (targetRpm - sim.rpm) * Math.min(1, dt * 4.5);
+      sim.frequency = (4 * sim.rpm) / 120;
+      sim.vRms = (sim.rpm / 1500) * 12.0;
+
+      // 4. Update Top Equation Bar & Sidebar Metrics
+      eqPturbine.innerText = `${sim.waterWatts}W`;
+      eqPvillage.innerText = `${activeVillage}W`;
+      eqPballast.innerText = `${Math.round(sim.ballastWatts)}W`;
+      eqRpm.innerText = Math.round(sim.rpm);
+      eqHzBadge.innerText = `${sim.frequency.toFixed(2)} Hz`;
+
+      if (Math.abs(netSurplusWatts) <= 5) {
+        eqPsurplus.innerText = `0W (Balanced)`;
+        eqSurplusBox.className = "flex items-center gap-1 bg-emerald-950/60 border border-emerald-600/60 px-2 py-0.5 rounded";
+        eqPsurplus.className = "text-emerald-300 font-bold";
+        eqHzBadge.className = "px-2 py-0.5 rounded font-extrabold text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        scopeStatusPill.innerText = `${sim.frequency.toFixed(2)} Hz LOCKED`;
+        scopeStatusPill.className = "px-1.5 py-0.5 text-[9px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/60 rounded";
+      } else if (netSurplusWatts > 5) {
+        eqPsurplus.innerText = `+${Math.round(netSurplusWatts)}W (OVERSPEED!)`;
+        eqSurplusBox.className = "flex items-center gap-1 bg-rose-950/80 border border-rose-500 px-2 py-0.5 rounded animate-pulse";
+        eqPsurplus.className = "text-rose-300 font-bold";
+        eqHzBadge.className = "px-2 py-0.5 rounded font-extrabold text-xs bg-rose-500/30 text-rose-300 border border-rose-500 animate-pulse";
+        scopeStatusPill.innerText = `${sim.frequency.toFixed(2)} Hz RUNAWAY!`;
+        scopeStatusPill.className = "px-1.5 py-0.5 text-[9px] font-mono font-bold bg-rose-950 text-rose-300 border border-rose-500 rounded animate-pulse";
+      } else {
+        eqPsurplus.innerText = `${Math.round(netSurplusWatts)}W (UNDER-FREQ)`;
+        eqSurplusBox.className = "flex items-center gap-1 bg-amber-950/80 border border-amber-500 px-2 py-0.5 rounded animate-pulse";
+        eqPsurplus.className = "text-amber-300 font-bold";
+        eqHzBadge.className = "px-2 py-0.5 rounded font-extrabold text-xs bg-amber-500/30 text-amber-300 border border-amber-500";
+        scopeStatusPill.innerText = `${sim.frequency.toFixed(2)} Hz SAGGING`;
+        scopeStatusPill.className = "px-1.5 py-0.5 text-[9px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-500 rounded";
+      }
+
+      lblTotalVillage.innerText = `${activeVillage}W Active`;
+      lblBallastStatus.innerText = `${Math.round(sim.ballastWatts)}W (${sim.ballastPwm.toFixed(1)}% PWM)`;
+      barBallast.style.width = `${sim.ballastPwm}%`;
+
+      valVrms.innerText = `${sim.vRms.toFixed(2)} V`;
+      valPeriod.innerText = `${(1000 / Math.max(1, sim.frequency)).toFixed(2)} ms`;
+      valPwm.innerText = `${sim.ballastPwm.toFixed(1)}% (${Math.round(sim.ballastWatts)}W)`;
+
+      // 5. Update 3D Mechanical Rotation, Lighting & Particle Flows
+      const radPerSec = (sim.rpm / 60) * Math.PI * 2;
+      rotatingGroup.rotation.x += radPerSec * dt * 0.35; // Scaled for clear visual inspection
+
+      // Rotate PWM Knob angle according to waterWatts
+      pwmKnob.rotation.y = ((sim.waterWatts - 120) / 300) * Math.PI * 1.5;
+
+      // Ballast Dump Bulb Thermal Glow
+      const glowNorm = sim.ballastPwm / 100;
+      bulbGlassMat.emissiveIntensity = 0.08 + glowNorm * 2.2;
+      ballastPointLight.intensity = glowNorm * 2.0;
+
+      // Village 3D Node Beacons
+      clinicNode3D.beaconMat.emissiveIntensity = sim.clinicOn ? 1.0 : 0.05;
+      domesticNode3D.beaconMat.emissiveIntensity = sim.domesticOn ? 1.0 : 0.05;
+      millNode3D.beaconMat.emissiveIntensity = sim.millOn ? 1.0 : 0.05;
+
+      // Pulse Highlight Ring
+      highlightRingMat.opacity = 0.5 + 0.35 * Math.sin(now * 0.005);
+
+      // Update Flowing Particles on 3D Wires
+      particleStreams.forEach(stream => {
+        let speed = 0.45;
+        let visible = true;
+        if (stream.type === 'dc') speed = (sim.waterWatts / 360) * 0.55;
+        if (stream.type === 'ac' || stream.type === 'zcross') speed = (sim.frequency / 50) * 0.55;
+        if (stream.type === 'village_ac') {
+          visible = activeVillage > 0;
+          speed = (activeVillage / 320) * 0.6;
+        }
+        if (stream.type === 'pwm') {
+          visible = sim.ballastWatts > 1;
+          speed = 0.25 + (sim.ballastPwm / 100) * 0.85;
+        }
+
+        stream.meshes.forEach(p => {
+          p.mesh.visible = visible;
+          if (visible) {
+            p.offset = (p.offset + dt * speed) % 1.0;
+            const pt = stream.curve.getPointAt(p.offset);
+            p.mesh.position.copy(pt);
+          }
+        });
+      });
+
+      // Smooth Camera Fly Animation
+      if (camAnim) {
+        camAnim.progress = Math.min(1, camAnim.progress + dt * 2.4);
+        const ease = 1 - Math.pow(1 - camAnim.progress, 3);
+        camera.position.lerpVectors(camAnim.startPos, camAnim.endPos, ease);
+        controls.target.lerpVectors(camAnim.startTarget, camAnim.endTarget, ease);
+        if (camAnim.progress >= 1) camAnim = null;
+      }
+
+      controls.update();
+      updatePinPositions();
+      renderer.render(scene, camera);
+
+      // 6. Render Dual-Trace Oscilloscope with Zero-Crossing Dots
+      renderOscilloscope(dt);
+
+      requestAnimationFrame(animateLoop);
+    }
+
+    function renderOscilloscope(dt) {
+      const w = scopeCanvas.width;
+      const h = scopeCanvas.height;
+      scopeCtx.fillStyle = '#02050b';
+      scopeCtx.fillRect(0, 0, w, h);
+
+      // Draw Subtle Grid
+      scopeCtx.strokeStyle = '#0f172a';
+      scopeCtx.lineWidth = 1;
+      for (let x = 0; x < w; x += 35) {
+        scopeCtx.beginPath(); scopeCtx.moveTo(x, 0); scopeCtx.lineTo(x, h); scopeCtx.stroke();
+      }
+      for (let y = 0; y < h; y += 25) {
+        scopeCtx.beginPath(); scopeCtx.moveTo(0, y); scopeCtx.lineTo(w, y); scopeCtx.stroke();
+      }
+
+      // 1.65V DC Midpoint Reference Line
+      const midY = h / 2 + 6;
+      scopeCtx.strokeStyle = '#334155';
+      scopeCtx.setLineDash([4, 4]);
+      scopeCtx.beginPath(); scopeCtx.moveTo(0, midY); scopeCtx.lineTo(w, midY); scopeCtx.stroke();
+      scopeCtx.setLineDash([]);
+
+      scopePhase += dt * sim.frequency * 0.45;
+      const cyclesShown = 2.5 * (sim.frequency / 50.0);
+      const ampRaw = Math.min(44, (sim.vRms / 12.0) * 36);
+      const ampAdc = ampRaw * 0.55;
+
+      // Trace 1: 12V AC Raw Alternator Sine Wave (Cyan)
+      scopeCtx.strokeStyle = '#06b6d4';
+      scopeCtx.lineWidth = 2;
+      scopeCtx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const angle = (x / w) * (Math.PI * 2 * cyclesShown) + scopePhase;
+        const y = midY - Math.sin(angle) * ampRaw;
+        if (x === 0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+      }
+      scopeCtx.stroke();
+
+      // Trace 2: ZMPT101B 1.65V Scaled ADC Wave (Purple) + Red Zero-Crossing Trigger Dots
+      scopeCtx.strokeStyle = '#a855f7';
+      scopeCtx.lineWidth = 1.6;
+      scopeCtx.beginPath();
+      const zeroCrossX = [];
+      let prevSin = null;
+      for (let x = 0; x < w; x++) {
+        const angle = (x / w) * (Math.PI * 2 * cyclesShown) + scopePhase;
+        const s = Math.sin(angle);
+        const y = midY - s * ampAdc;
+        if (x === 0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+
+        // Detect rising zero-crossing (s crosses 0 going positive)
+        if (prevSin !== null && prevSin < 0 && s >= 0) {
+          zeroCrossX.push(x);
+        }
+        prevSin = s;
+      }
+      scopeCtx.stroke();
+
+      // Draw Red Interrupt Trigger Dots at Rising Zero Crossings
+      zeroCrossX.forEach(zx => {
+        scopeCtx.fillStyle = '#f43f5e';
+        scopeCtx.beginPath();
+        scopeCtx.arc(zx, midY, 4.2, 0, Math.PI * 2);
+        scopeCtx.fill();
+        scopeCtx.strokeStyle = '#ffffff';
+        scopeCtx.lineWidth = 1;
+        scopeCtx.stroke();
+      });
+    }
+
+    // Handle Viewport Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // Boot Application
+    window.onload = () => {
+      selectTourStep(1);
+      requestAnimationFrame(animateLoop);
+    };
+  </script>
+</body>
+</html>
